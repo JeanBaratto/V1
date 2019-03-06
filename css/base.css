@@ -35,8 +35,13 @@ article,aside,details,figcaption,figure,footer,header,hgroup,main,nav,section,su
 
 @import url(https://fonts.googleapis.com/css?family=Montserrat:400,700);
 
-form { height: 35vh;
-	margin-bottom: 30px;auto; }
+form {
+	height: 55vh;
+	padding-left: 50px;
+	margin-bottom:  -50px;
+
+
+	 }
 
 
 .feedback-input:focus { border:1px solid blue;
@@ -45,6 +50,7 @@ border-radius: 50px;}
 
 
 [type="submit"] {
+
   width: 100%;
   background:grey;
   border-radius:5px;
@@ -69,7 +75,7 @@ border-radius: 50px;}
   border-radius: 5px;
   line-height: 22px;
   background-color: transparent;
-  border:1px solid grey;
+  border:1px solid white;
   transition: all 0.3s;
   padding: 13px;
   margin-bottom: 15px;
@@ -78,6 +84,7 @@ border-radius: 50px;}
 	min-width: 67vw;
   box-sizing: border-box;
   outline:0;
+	text-align:
 }
 
 .feedback-input:focus { border:3px
@@ -90,8 +97,14 @@ textarea {min-height: 80px;
 
 }
 
-.num{margin-bottom:  50px;
-	text-align: center;
+.num{
+	padding-bottom: 20px;
+text-align: center;
+}
+.num2{
+	color: white;
+	padding-bottom: 50px;
+text-align: center;
 }
 
 [type="submit"] {
@@ -457,7 +470,9 @@ margin-bottom: 150px;}
 
 body {
 	--color-text: #4800d4;
-    --color-bg: #aaaaaa;
+
+  /*--color-bg: #8e8ba5;*/
+	background: linear-gradient( #fff, #8e8ba5);
     --color-link: #ec1752;
     --color-link-hover: #eb1851;
     --color-info: #2A46FF;
@@ -575,7 +590,7 @@ a {
 
 a:hover,
 a:focus {
-	color: #474747;
+	color: #3700ff;
 
 	outline: none;
 }
