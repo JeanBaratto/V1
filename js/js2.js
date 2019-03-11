@@ -1,5 +1,15 @@
-
+/**
+ * demo.js
+ * http://www.codrops.com
+ *
+ * Licensed under the MIT license.
+ * http://www.opensource.org/licenses/mit-license.php
+ *
+ * Copyright 2019, Codrops
+ * http://www.codrops.com
+ */
 {
+    // Some help functions.
     const shuffleArray = arr => arr.sort(() => Math.random() - 0.5);
     const lineEq = (y2, y1, x2, x1, currentVal) => {
         let m = (y2 - y1) / (x2 - x1);
@@ -8,6 +18,7 @@
     };
     const lerp = (a, b, n) => (1 - n) * a + n * b;
     const body = document.body;
+    const bodyColor = getComputedStyle(body).getPropertyValue('--color-bg').trim() || 'white';
     const getMousePos = (e) => {
         let posx = 0;
         let posy = 0;
@@ -31,6 +42,12 @@
     window.addEventListener('resize', calcWinsize);
 
     // Custom mouse cursor.
+
+
+
+
+
+
     class CursorFx {
         constructor(el) {
             this.DOM = {el: el};
@@ -63,7 +80,7 @@
             requestAnimationFrame(() => this.render());
         }
         enter() {
-            cursor.scale = 2.7;
+            cursor.scale = 5;
         }
         leave() {
             cursor.scale = 1;
@@ -72,18 +89,141 @@
             this.lastScale = 1;
             this.lastOpacity = 0;
         }
-
-
     }
 
+    // Tilt effect used for the main slide's image and title.
+    class TiltFx {
+        constructor(el, options) {
+            this.DOM = {el: el};
+            this.options = {
+                valuesFromTo: [-50,50],
+                lerpFactorOuter: 0.25,
+                lerpFactor: pos => 0.05*Math.pow(2,pos)
+            };
+            Object.assign(this.options, options);
+            this.DOM.moving = [...this.DOM.el.children];
+            this.movingTotal = this.DOM.moving.length;
+            this.mousePos = { x : winsize.width/2, y : winsize.height/2 };
+            this.translations = [...new Array(this.movingTotal)].map(() => ({x:0, y:0}));
+            this.initEvents();
+        }
+        initEvents() {
+            window.addEventListener('mousemove', ev => this.mousePos = getMousePos(ev));
+        }
+        render() {
+            for (let i = 0; i <= this.movingTotal - 1; ++i) {
+                let lerpFactor = i < this.movingTotal - 1 ? this.options.lerpFactor(i) : this.options.lerpFactorOuter;
+                this.translations[i].x = lerp(this.translations[i].x, lineEq(this.options.valuesFromTo[1],this.options.valuesFromTo[0], winsize.width, 0, this.mousePos.x), lerpFactor);
+                this.translations[i].y = lerp(this.translations[i].y, lineEq(this.options.valuesFromTo[1],this.options.valuesFromTo[0], winsize.height, 0, this.mousePos.y), lerpFactor);
+                this.DOM.moving[i].style.transform = `translateX(${(this.translations[i].x)}px) translateY(${this.translations[i].y}px)`;
+            }
+            this.requestId = requestAnimationFrame(() => this.render());
+        }
+        start() {
+            if ( !this.requestId ) {
+                this.requestId = window.requestAnimationFrame(() => this.render());
+            }
+        }
+        stop() {
+            if ( this.requestId ) {
+                window.cancelAnimationFrame(this.requestId);
+                this.requestId = undefined;
 
-    // Custom cursor chnages state when hovering on elements with 'data-hover'.
-    [...document.querySelectorAll('[data-hover]')].forEach((link) => {
-        link.addEventListener('mouseenter', () => cursor.enter() );
-        link.addEventListener('mouseleave', () => cursor.leave() );
-        link.addEventListener('click', () => cursor.click() );
-    });
+                for (let i = 0; i <= this.movingTotal - 1; ++i) {
+                    this.translations[i].x = 0;
+                    this.translations[i].y = 0;
+                    this.DOM.moving[i].style.transform = `translateX(0px) translateY(0px)`;
+                }
+            }
+        }
+    }
 
+    class Figure {
+        constructor(el) {
+            this.DOM = {el: el};
+            this.DOM.img = this.DOM.el.querySelector('.slide__figure-img');
+            this.DOM.slideEl = this.DOM.img;
+            // We will add a tilt effect for the main figure. For this we will create clones of the main image that will move together
+            // with the main image when the user moves the mouse.
+            if ( this.DOM.el.classList.contains('slide__figure--main') ) {
+                this.isMain = true;
+                // Number of total images (main image + clones).
+                this.totalTiltImgs = 2;
+                this.DOM.inner = document.createElement('div');
+                this.DOM.slideEl = this.DOM.inner;
+                this.DOM.inner.className = 'slide__figure-inner';
+                this.DOM.el.appendChild(this.DOM.inner);
+                this.DOM.inner.appendChild(this.DOM.img);
+                for (let i = 0; i <= this.totalTiltImgs; ++i) {
+                    this.DOM.inner.appendChild(this.DOM.img.cloneNode(true));
+                }
+                // Initialize the tilt effect.
+                this.tilt = new TiltFx(this.DOM.inner, {
+                    valuesFromTo: [20,-20],
+                    lerpFactorOuter: 0.1,
+                    lerpFactor: pos => 0.02*pos+0.02
+                });
+            }
+        }
+    }
+
+    class Slide {
+        constructor(el) {
+            this.DOM = {el: el};
+            this.figures = [];
+            [...this.DOM.el.querySelectorAll('.slide__figure')].forEach(figure => this.figures.push(new Figure(figure)));
+            this.figuresTotal = this.figures.length;
+            this.DOM.title = this.DOM.el.querySelector('.slide__title');
+            this.DOM.content = this.DOM.el.querySelector('.slide__content');
+            this.contentcolor = this.DOM.el.dataset.contentcolor;
+            this.onClickBackFromContentFn = () => {
+                slideshow.hideContent();
+            };
+            this.DOM.backFromContentCtrl = this.DOM.el.querySelector('.slide__back');
+            this.DOM.backFromContentCtrl.addEventListener('click', this.onClickBackFromContentFn);
+            // We will add a tilt effect for the title. For this we will create clones of the title that will move
+            // when the user moves the mouse.
+            // Number of total title elements;
+            this.totalTiltText = 3;
+            this.DOM.innerTitleTmp = document.createElement('span');
+            this.DOM.innerTitleTmp.className = 'slide__title-inner';
+            this.DOM.innerTitleTmp.innerHTML = this.DOM.title.innerHTML;
+            this.DOM.title.innerHTML = '';
+            for (let i = 0; i <= this.totalTiltText-1; ++i) {
+                this.DOM.title.appendChild(this.DOM.innerTitleTmp.cloneNode(true));
+            }
+            this.DOM.innerTitle = [...this.DOM.title.querySelectorAll('.slide__title-inner')];
+            // Split the title inner elements into spans using charmingjs.
+            this.DOM.innerTitle.forEach((inner) => charming(inner));
+            this.innerTitleTotal = this.DOM.innerTitle.length;
+            // Letters of the main one (the top most inner title).
+            this.innerTitleMainLetters = [...this.DOM.innerTitle[this.innerTitleTotal-1].querySelectorAll('span')];
+            // total letters.
+            this.titleLettersTotal = this.innerTitleMainLetters.length;
+            // Initialize the tilt effect for the title.
+            this.textTilt = new TiltFx(this.DOM.title);
+            this.DOM.text = this.DOM.el.querySelector('.slide__text');
+            this.DOM.showContentCtrl = this.DOM.text.querySelector('.slide__text-link');
+            this.onClickShowContentFn = (ev) => {
+                ev.preventDefault();
+                slideshow.showContent();
+            };
+            this.DOM.showContentCtrl.addEventListener('click', this.onClickShowContentFn);
+        }
+        setCurrent() {
+            this.toggleCurrent(true);
+        }
+        unsetCurrent() {
+            this.toggleCurrent(false);
+        }
+        toggleCurrent(isCurrent) {
+            this.DOM.el.classList[isCurrent ? 'add' : 'remove']('slide--current');
+            // Start/Stop the images tilt effect (initialized on the main figure).
+            this.figures.find(figure => figure.isMain).tilt[isCurrent ? 'start' : 'stop']();
+            // Start/Stop the title tilt effect.
+            this.textTilt[isCurrent ? 'start' : 'stop']();
+        }
+    }
 
     class Slideshow {
         constructor(el) {
@@ -100,10 +240,6 @@
                 staggerFactor: 0.13
             };
         }
-
-
-
-
         navigate(dir) {
             if ( this.isAnimating || this.isContentOpen ) {
                 return;
@@ -394,7 +530,12 @@
     const nav = new Navigation(document.querySelector('.nav'));
     slideshow.nav = nav;
 
-
+    // Custom cursor chnages state when hovering on elements with 'data-hover'.
+    [...document.querySelectorAll('[data-hover]')].forEach((link) => {
+        link.addEventListener('mouseenter', () => cursor.enter() );
+        link.addEventListener('mouseleave', () => cursor.leave() );
+        link.addEventListener('click', () => cursor.click() );
+    });
 
     // Preload all the images in the page.
     imagesLoaded(document.querySelectorAll('.slide__figure-img'), {background: true}, () => body.classList.remove('loading'));
